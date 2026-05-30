@@ -1,0 +1,19 @@
+ZORO LSTM Retrain Report
+========================================
+Train accuracy  : 51.1%
+Val accuracy    : 50.2%
+Test accuracy   : 54.3%
+
+Walk-forward validation (3 windows on test set):
+  Window 1: 53.8%
+  Window 2: 53.8%
+  Window 3: 55.4%
+
+Consistent across windows = real signal.
+Drops off = overfitting.
+
+Features: ['Close', 'RSI', 'MACD', 'BB_Width', 'ATR', 'SMA_20', 'Volume_Ratio']
+Sequence length: 60
+Horizon: 4h
+Train/Val/Test split: 0.7/0.15/0.15000000000000005
+Scaler fitted on TRAIN only — no lookahead bias.

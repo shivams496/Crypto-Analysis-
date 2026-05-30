@@ -1,0 +1,67 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ZORO Crypto Bot — Phase 3 Production Stack
+#
+# Start everything:   docker-compose up --build
+# Stop cleanly:       docker-compose down
+# View logs:          docker-compose logs -f bot
+# DB shell:           docker-compose exec db psql -U zoro -d zorodb
+# API health check:   curl http://localhost:8000/
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: zoro_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     zoro
+      POSTGRES_PASSWORD: zoro
+      POSTGRES_DB:       zorodb
+    volumes:
+      - zoro_pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"       # expose for local inspection (remove in production)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zoro -d zorodb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Bot + FastAPI ───────────────────────────────────────────────────────────
+  bot:
+    build: .
+    container_name: zoro_bot
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env                            # your real API keys (never committed)
+    environment:
+      DATABASE_URL: postgresql://zoro:zoro@db:5432/zorodb
+      TF_ENABLE_ONEDNN_OPTS: "0"
+      TF_CPP_MIN_LOG_LEVEL: "3"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    ports:
+      - "8000:8000"                     # FastAPI accessible at localhost:8000
+    volumes:
+      - ./zoro_trade_log.json:/app/zoro_trade_log.json   # persist JSON backup
+      - ./lstm_model.h5:/app/lstm_model.h5:ro
+      - ./lstm_scaler.pkl:/app/lstm_scaler.pkl:ro
+      - ./zoro_ppo_agent.zip:/app/zoro_ppo_agent.zip:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ── Named volume (data persists across docker-compose down/up) ───────────────
+volumes:
+  zoro_pgdata:

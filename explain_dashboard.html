@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZORO — Trade Explainability</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;800&display=swap');
+
+  :root {
+    --bg:       #0a0c10;
+    --surface:  #111318;
+    --border:   #1e2230;
+    --accent:   #00ff9d;
+    --red:      #ff4560;
+    --yellow:   #ffd166;
+    --text:     #e2e8f0;
+    --muted:    #4a5568;
+    --mono:     'JetBrains Mono', monospace;
+    --sans:     'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid lines background ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,157,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,157,.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 48px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+  }
+
+  .logo {
+    font-family: var(--sans);
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -1px;
+  }
+
+  .logo span {
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .tag {
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .live-dot {
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: .4; transform: scale(.7); }
+  }
+
+  /* ── Symbol selector ── */
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+
+  .symbol-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all .15s;
+    letter-spacing: .5px;
+  }
+
+  .symbol-btn:hover { border-color: var(--accent); color: var(--text); }
+  .symbol-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,255,157,.06);
+  }
+
+  .fetch-btn {
+    margin-left: auto;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 20px;
+    cursor: pointer;
+    border-radius: 3px;
+    letter-spacing: .5px;
+    transition: opacity .15s;
+  }
+
+  .fetch-btn:hover { opacity: .85; }
+  .fetch-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── Signal card ── */
+  .signal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+  }
+
+  .metric label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .metric .value {
+    font-family: var(--sans);
+    font-size: 26px;
+    font-weight: 700;
+  }
+
+  .value.long  { color: var(--accent); }
+  .value.short { color: var(--red); }
+  .value.flat  { color: var(--muted); }
+
+  .metric .sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── Explanation text ── */
+  .explanation-box {
+    background: rgba(0,255,157,.04);
+    border: 1px solid rgba(0,255,157,.15);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  /* ── Feature bars ── */
+  .section-title {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+  }
+
+  .feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 36px;
+  }
+
+  .feature-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 52px;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    transform: translateX(-12px);
+    transition: opacity .4s, transform .4s;
+  }
+
+  .feature-row.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .feature-label {
+    font-size: 12px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bar-track {
+    height: 8px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    width: 0%;
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+  }
+
+  .bar-fill.bullish { background: var(--accent); }
+  .bar-fill.bearish { background: var(--red); }
+  .bar-fill.neutral { background: var(--yellow); }
+
+  .bar-pct {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .feature-desc {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    grid-column: 2 / 4;
+  }
+
+  .feature-row-wrap {
+    display: contents;
+  }
+
+  /* ── Gates fired ── */
+  .gates-box {
+    margin-bottom: 36px;
+  }
+
+  .gate-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 2px;
+    letter-spacing: .3px;
+  }
+
+  .chip.green {
+    background: rgba(0,255,157,.1);
+    color: var(--accent);
+    border: 1px solid rgba(0,255,157,.2);
+  }
+
+  .chip.red {
+    background: rgba(255,69,96,.1);
+    color: var(--red);
+    border: 1px solid rgba(255,69,96,.2);
+  }
+
+  /* ── History table ── */
+  .history-section {
+    margin-bottom: 48px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  thead th {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid rgba(30,34,48,.5);
+    transition: background .1s;
+  }
+
+  tbody tr:hover { background: rgba(255,255,255,.02); }
+
+  td {
+    padding: 10px 12px;
+    color: var(--text);
+  }
+
+  td.pos { color: var(--accent); }
+  td.neg { color: var(--red); }
+
+  /* ── Error / Loading ── */
+  .status-msg {
+    text-align: center;
+    padding: 60px 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    vertical-align: middle;
+    margin-right: 10px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── API URL bar ── */
+  .api-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .api-bar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .api-bar label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+
+  @media (max-width: 600px) {
+    .signal-card { grid-template-columns: 1fr 1fr; }
+    .feature-row { grid-template-columns: 120px 1fr 44px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">ZORO<span>/explain</span></div>
+    <div class="tag"><span class="live-dot"></span>Phase 4</div>
+    <div class="tag">SHAP</div>
+  </header>
+
+  <!-- API URL config -->
+  <div class="api-bar">
+    <label>API</label>
+    <input id="apiUrl" type="text" value="http://localhost:8000" placeholder="http://localhost:8000" />
+    <span id="connStatus" style="font-size:11px; color: var(--muted)">⬤ disconnected</span>
+  </div>
+
+  <!-- Symbol selector -->
+  <div class="controls">
+    <button class="symbol-btn active" data-sym="BNB-USD">BNB</button>
+    <button class="symbol-btn" data-sym="ETH-USD">ETH</button>
+    <button class="symbol-btn" data-sym="BTC-USD">BTC</button>
+    <button class="symbol-btn" data-sym="SOL-USD">SOL</button>
+    <button class="symbol-btn" data-sym="ADA-USD">ADA</button>
+    <button class="fetch-btn" id="fetchBtn" onclick="fetchExplanation()">EXPLAIN ↗</button>
+  </div>
+
+  <!-- Main output -->
+  <div id="mainOutput">
+    <div class="status-msg">Select a symbol and click EXPLAIN to see why the bot made its last decision.</div>
+  </div>
+
+</div>
+
+<script>
+const DEMO_DATA = {
+  "BNB-USD": {
+    symbol: "BNB-USD", direction: "SHORT", action: "SHORT", price: 673.42,
+    confidence: 85, rsi: 86.3, lstm_prob: 0.21, sentiment: -0.298,
+    human_explanation: "Bot SHORT BNB-USD at $673.42 [conf=85/100] because: RSI (43%: RSI overbought >70) · FinBERT Sentiment (31%: bearish news sentiment) · Bollinger Position (18%: near upper band)",
+    gates: ["RSI=86.3 overbought","SMC bearish structure","MACD bearish","BB overbought (0.94)","LSTM 21% bearish","FinBERT bearish (-0.298) -3pts"],
+    feature_contributions: [
+      { feature:"rsi_norm",    label:"RSI",                pct:43, description:"RSI overbought (>70)", bullish:false },
+      { feature:"sentiment",   label:"FinBERT Sentiment",  pct:31, description:"bearish news sentiment", bullish:false },
+      { feature:"bb_position", label:"Bollinger Position", pct:18, description:"near upper band (overbought)", bullish:false },
+      { feature:"trend",       label:"Trend (SMA)",        pct: 5, description:"downtrend (SMA20 < SMA50)", bullish:false },
+      { feature:"macd_norm",   label:"MACD",               pct: 3, description:"MACD bearish crossover", bullish:false },
+    ],
+    dominant_reason: "RSI overbought (>70)", method: "gate_analysis"
+  }
+};
+
+let activeSymbol = "BNB-USD";
+
+document.querySelectorAll('.symbol-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.symbol-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeSymbol = btn.dataset.sym;
+  });
+});
+
+async function fetchExplanation() {
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled = true;
+  btn.textContent = 'LOADING...';
+
+  const base = document.getElementById('apiUrl').value.replace(/\/$/, '');
+  const url  = `${base}/explain?symbol=${encodeURIComponent(activeSymbol)}`;
+
+  let data = null;
+
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    data = await resp.json();
+    document.getElementById('connStatus').textContent = '⬤ connected';
+    document.getElementById('connStatus').style.color = 'var(--accent)';
+  } catch (e) {
+    // Fall back to demo data for offline preview
+    if (DEMO_DATA[activeSymbol]) {
+      data = DEMO_DATA[activeSymbol];
+      document.getElementById('connStatus').textContent = '⬤ demo mode';
+      document.getElementById('connStatus').style.color = 'var(--yellow)';
+    } else {
+      showError(`Cannot reach API at ${base}. Start with: uvicorn api:app --reload --port 8000`);
+      btn.disabled = false;
+      btn.textContent = 'EXPLAIN ↗';
+      return;
+    }
+  }
+
+  renderExplanation(data);
+  btn.disabled = false;
+  btn.textContent = 'EXPLAIN ↗';
+}
+
+function showError(msg) {
+  document.getElementById('mainOutput').innerHTML =
+    `<div class="status-msg" style="color:var(--red)">${msg}</div>`;
+}
+
+function renderExplanation(d) {
+  const dir       = (d.direction || d.action || 'FLAT').toUpperCase();
+  const dirClass  = dir === 'LONG' || dir === 'BUY' ? 'long' : dir === 'SHORT' ? 'short' : 'flat';
+  const dirLabel  = dir === 'LONG' ? 'BUY' : dir;
+  const method    = d.method === 'shap' ? 'SHAP GradientExplainer' : 'Gate Analysis';
+
+  const featureBars = (d.feature_contributions || []).map((f, i) => {
+    const color = f.bullish ? 'bullish' : 'bearish';
+    return `
+      <div class="feature-row" id="fr${i}">
+        <span class="feature-label">${f.label}</span>
+        <div class="bar-track"><div class="bar-fill ${color}" id="bar${i}" data-pct="${f.pct}"></div></div>
+        <span class="bar-pct">${f.pct}%</span>
+        <span class="feature-desc" style="grid-column:2/4; font-size:11px; color:var(--muted); padding-bottom:2px">${f.description}</span>
+      </div>`;
+  }).join('');
+
+  const gateChips = (d.gates || []).map(g => {
+    const isNeg = g.includes('disagrees') || g.includes('-');
+    return `<div class="chip ${isNeg ? 'red' : 'green'}">${g}</div>`;
+  }).join('');
+
+  document.getElementById('mainOutput').innerHTML = `
+    <div class="signal-card">
+      <div class="metric">
+        <label>Signal</label>
+        <div class="value ${dirClass}">${dirLabel}</div>
+        <div class="sub">${d.symbol}</div>
+      </div>
+      <div class="metric">
+        <label>Price</label>
+        <div class="value" style="font-size:22px">$${Number(d.price).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div class="sub">Confidence: ${d.confidence}/100</div>
+      </div>
+      <div class="metric">
+        <label>Indicators</label>
+        <div class="value" style="font-size:18px; color:var(--yellow)">RSI ${Number(d.rsi).toFixed(1)}</div>
+        <div class="sub">LSTM ${(Number(d.lstm_prob)*100).toFixed(0)}% · Sent ${Number(d.sentiment).toFixed(2)}</div>
+      </div>
+    </div>
+
+    <div class="explanation-box">
+      ${d.human_explanation || `Bot ${dirLabel} ${d.symbol} — see feature breakdown below.`}
+      <div style="margin-top:8px; font-size:11px; color:var(--muted)">Method: ${method}</div>
+    </div>
+
+    <div class="section-title">Feature Importance</div>
+    <div class="feature-list">${featureBars}</div>
+
+    ${gateChips ? `
+    <div class="gates-box">
+      <div class="section-title">Gates Fired</div>
+      <div class="gate-chips">${gateChips}</div>
+    </div>` : ''}
+  `;
+
+  // Animate bars in
+  requestAnimationFrame(() => {
+    (d.feature_contributions || []).forEach((f, i) => {
+      setTimeout(() => {
+        const row = document.getElementById(`fr${i}`);
+        const bar = document.getElementById(`bar${i}`);
+        if (row) row.classList.add('visible');
+        if (bar) bar.style.width = f.pct + '%';
+      }, i * 80);
+    });
+  });
+}
+
+// Auto-fetch demo on load so it's not blank
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    renderExplanation(DEMO_DATA["BNB-USD"]);
+  }, 300);
+});
+</script>
+</body>
+</html>

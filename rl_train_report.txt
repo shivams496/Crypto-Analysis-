@@ -1,0 +1,33 @@
+=================================================================
+ZORO RL Agent Retraining Report — Phase 2 Step 2
+Trained on: ETH-USD, BTC-USD, SOL-USD, BNB-USD, ADA-USD
+=================================================================
+Obs space  : 10 features (rsi, macd, bb, trend, vol, sentiment,
+             momentum, lstm, daily_return, atr)
+Action     : 3 (HOLD / BUY / SELL)
+Reward     : Sharpe ratio
+Steps      : 300,000
+
+Walk-Forward Validation (per coin)
+-----------------------------------------------------------------
+  ETH-USD   sharpes=['69.58', '-3.28', '363.98']  spread=367.26  [CHECK]
+  BTC-USD   sharpes=['79.40', '-41.72', '82.83']  spread=124.56  [CHECK]
+  SOL-USD   sharpes=['105.31', '-36.87', '0.00']  spread=142.18  [CHECK]
+  BNB-USD   sharpes=['40.35', '-51.75', '873.47']  spread=925.22  [CHECK]
+  ADA-USD   sharpes=['65.60', '-63.86', '62.86']  spread=129.47  [CHECK]
+
+  Overall: consistent=NO
+
+Final Model — Per Coin Evaluation
+-----------------------------------------------------------------
+  ETH-USD   win=92.7%  sharpe=107.195  trades=55
+  BTC-USD   win=92.5%  sharpe=113.028  trades=67
+  SOL-USD   win=89.4%  sharpe=78.829  trades=66
+  BNB-USD   win=78.8%  sharpe=67.436  trades=85
+  ADA-USD   win=100.0%  sharpe=43.171  trades=9
+
+Output
+-----------------------------------------------------------------
+  zoro_ppo_agent.zip — already in zoro_v2/
+  Run: python trader.py
+=================================================================

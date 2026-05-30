@@ -1,0 +1,49 @@
+{
+  "symbol": "BNB-USD",
+  "direction": "SHORT",
+  "action": "SHORT",
+  "price": 670.2999877929688,
+  "confidence": 73,
+  "rsi": 88.61583104949219,
+  "lstm_prob": 0.49111679196357727,
+  "sentiment": -0.29770064970944077,
+  "feature_contributions": [
+    {
+      "feature": "rsi_norm",
+      "label": "RSI",
+      "pct": 47.6,
+      "description": "RSI oversold (<30)",
+      "bullish": false
+    },
+    {
+      "feature": "trend",
+      "label": "Trend (SMA)",
+      "pct": 23.8,
+      "description": "downtrend (SMA20 < SMA50)",
+      "bullish": false
+    },
+    {
+      "feature": "momentum",
+      "label": "Momentum",
+      "pct": 23.8,
+      "description": "negative momentum",
+      "bullish": false
+    },
+    {
+      "feature": "sentiment",
+      "label": "FinBERT Sentiment",
+      "pct": 4.8,
+      "description": "bearish news sentiment",
+      "bullish": false
+    }
+  ],
+  "dominant_reason": "RSI oversold (<30)",
+  "human_explanation": "Bot SHORT BNB-USD at $670.30 [conf=73/100] because: RSI (47.6%: RSI oversold (<30)) \u00b7 Trend (SMA) (23.8%: downtrend (SMA20 < SMA50)) \u00b7 Momentum (23.8%: negative momentum)",
+  "gates": [
+    "RSI=88.6 overbought",
+    "SMC bullish structure",
+    "FinBERT bearish (-0.30) -2pts",
+    "RL SELL"
+  ],
+  "method": "gate_analysis"
+}
