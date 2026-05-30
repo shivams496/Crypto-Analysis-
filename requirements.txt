@@ -1,25 +1,50 @@
-# requirements.txt — ZORO Phase 3
+# ZORO — Crypto AI Trading Bot
+# Requirements · Upgrade H Complete
 # Install: pip install -r requirements.txt
 
-# ── Existing Phase 1 + 2 dependencies ────────────────────────────────────
-yfinance==0.2.40
-pandas==2.2.2
-numpy==1.26.4
-tensorflow==2.16.1
-stable-baselines3==2.3.2
-gymnasium==0.29.1
-scikit-learn==1.5.0
-pytz==2024.1
-requests==2.32.3
-python-telegram-bot==21.3
-transformers==4.41.2
-torch==2.3.0
-vaderSentiment==3.3.2
-feedparser==6.0.11
+# ── Core Data & Finance ───────────────────────────────────────────────────────
+yfinance==1.4.0
+pandas==2.3.3
+numpy==2.4.6
+python-binance==1.0.36
+feedparser==6.0.12
 
-# ── Phase 3 — PostgreSQL + FastAPI ───────────────────────────────────────
-sqlalchemy==2.0.30          # DB ORM / core
-psycopg2-binary==2.9.9      # PostgreSQL driver
-fastapi==0.111.0            # REST API framework
-uvicorn[standard]==0.30.1   # ASGI server for FastAPI
-httpx==0.27.0               # for FastAPI test client (optional)
+# ── Technical Indicators & Backtesting ───────────────────────────────────────
+vectorbt==1.0.0
+scipy==1.17.1
+scikit-learn==1.8.0
+
+# ── AI / ML ───────────────────────────────────────────────────────────────────
+tensorflow==2.21.0
+keras==3.14.1
+torch==2.12.0
+stable_baselines3==2.8.0
+gymnasium==1.2.3
+
+# ── NLP / Sentiment ───────────────────────────────────────────────────────────
+transformers==5.9.0
+vaderSentiment==3.3.2
+beautifulsoup4==4.14.3
+
+# ── Explainability ────────────────────────────────────────────────────────────
+# shap  # install separately: pip install shap
+
+# ── Backend / API ─────────────────────────────────────────────────────────────
+fastapi==0.136.3
+uvicorn==0.48.0
+SQLAlchemy==2.0.50
+psycopg2-binary==2.9.12
+python-multipart==0.0.29
+
+# ── Dashboard ────────────────────────────────────────────────────────────────
+streamlit==1.57.0
+plotly==6.7.0
+
+# ── Alerts ───────────────────────────────────────────────────────────────────
+requests==2.32.5
+
+# ── Utilities ────────────────────────────────────────────────────────────────
+python-dotenv==1.2.2
+pytz==2026.2
+schedule==1.2.2
+huggingface_hub==1.17.0
