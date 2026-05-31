@@ -22,7 +22,7 @@ logging.getLogger("tensorflow").setLevel(logging.ERROR)
 
 import pytz
 
-from zoro.alerts import send_telegram, signal_message
+from zoro.alerts import send_email, send_telegram, signal_message
 from zoro.config import config
 from zoro.data import fetch_crypto_data
 from zoro.database import init_db, insert_signal, insert_trade
@@ -186,6 +186,7 @@ def run_loop() -> None:
                     f"stop=${result.stop_loss:,.2f}  tp=${take_profit:,.2f}"
                 )
                 send_telegram(msg)
+                send_email(f"ZORO {result.direction} — {symbol}", msg.replace("<b>","").replace("</b>",""))
 
             # ── Manage open position ──────────────────────────────────────
             elif pos is not None:
@@ -209,10 +210,12 @@ def run_loop() -> None:
                     print(f"  → STOP HIT  {symbol}  P&L=${pnl:+.2f}")
                     _record_trade(result, "CLOSE", qty, entry_price, side)
                     del open_positions[symbol]
+                    send_email(f"ZORO STOP HIT — {symbol}", f"Stop loss hit on {symbol}\nEntry: ${entry_price:,.2f}\nExit: ${result.price:,.2f}\nP&L: ${pnl:+.2f}")
                 elif tp_hit:
                     print(f"  → TAKE PROFIT {symbol}  P&L=${pnl:+.2f} ✅")
                     _record_trade(result, "CLOSE", qty, entry_price, side)
                     del open_positions[symbol]
+                    send_email(f"ZORO TAKE PROFIT ✅ — {symbol}", f"Take profit hit on {symbol}\nEntry: ${entry_price:,.2f}\nExit: ${result.price:,.2f}\nP&L: ${pnl:+.2f}")
                 else:
                     print(
                         f"    ↳ open {side}  entry=${entry_price:,.2f}  "
