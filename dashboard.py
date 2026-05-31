@@ -378,6 +378,53 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
+# ── Auto-refresh sidebar ──────────────────────────────────────────────────────
+import time as _time
+with st.sidebar:
+    st.markdown("""
+    <div style="font-family:'Share Tech Mono',monospace;font-size:0.75rem;
+                color:#8b0000;letter-spacing:2px;margin-bottom:0.5rem">
+    ⚔ ZORO CONTROLS
+    </div>""", unsafe_allow_html=True)
+    auto_refresh = st.toggle("Auto-refresh (60s)", value=False)
+    if auto_refresh:
+        st.markdown("""<div style="font-family:'Share Tech Mono',monospace;
+                    font-size:0.68rem;color:#444">
+                    <span style="color:#00ff88">●</span> Refreshing every 60s
+                    </div>""", unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("""<div style="font-family:'Share Tech Mono',monospace;
+                font-size:0.65rem;color:#333;line-height:1.8">
+                python trader.py<br>
+                uvicorn api:app --port 8000<br>
+                streamlit run dashboard.py
+                </div>""", unsafe_allow_html=True)
+
+# ── RSI Alert banner — shows whichever coin is in signal zone ─────────────────
+_alert_coins = []
+for _sym, _ticker in COINS.items():
+    _df = all_data.get(_sym)
+    if _df is not None and not _df.empty:
+        _rsi = float(_df["RSI"].iloc[-1])
+        _price = float(_df["Close"].iloc[-1])
+        if _rsi > 75:
+            _alert_coins.append((_ticker, _rsi, _price, "SHORT", "#dc143c", "🔴"))
+        elif _rsi < 25:
+            _alert_coins.append((_ticker, _rsi, _price, "LONG", "#00ff88", "🟢"))
+
+if _alert_coins:
+    _parts = " &nbsp;·&nbsp; ".join(
+        f'<span style="color:{c}">{flag} <strong>{t}</strong> RSI {r:.1f} → {d} ZONE</span>'
+        for t, r, p, d, c, flag in _alert_coins
+    )
+    st.markdown(f"""
+    <div style="background:#150000;border:1px solid #8b0000;border-left:4px solid #dc143c;
+                padding:0.6rem 1rem;margin:0.5rem 0;border-radius:3px;
+                font-family:'Share Tech Mono',monospace;font-size:0.78rem;
+                animation:flicker 2s infinite">
+        ⚡ SIGNAL ZONE ALERT &nbsp;·&nbsp; {_parts}
+    </div>""", unsafe_allow_html=True)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -532,7 +579,7 @@ with t2:
         ["6","FinBERT Sentiment","News NLP score","±10 pts"],
         ["7","RL PPO Agent","Reinforcement signal","±10 pts"],
     ], columns=["#","Gate","Signal","Weight"])
-    st.dataframe(gate_df, width='stretch', hide_index=True)
+    st.dataframe(gate_df, use_container_width=True, hide_index=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -600,14 +647,14 @@ with t3:
 
         layout = plotly_base(480)
         layout.update(xaxis_rangeslider_visible=False)
-        layout["yaxis2"] = dict(gridcolor="#111", range=[0,100])
-        layout["yaxis3"] = dict(gridcolor="#111")
         fig.update_layout(**layout)
+        fig.update_yaxes(gridcolor="#111", showgrid=True, row=1, col=1)
+        fig.update_yaxes(gridcolor="#111", showgrid=True, range=[0,100], row=2, col=1)
+        fig.update_yaxes(gridcolor="#111", showgrid=True, row=3, col=1)
         for i in range(1,4):
             fig.update_xaxes(gridcolor="#111", showgrid=True, row=i, col=1)
-            fig.update_yaxes(gridcolor="#111", showgrid=True, row=i, col=1)
 
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True)
     else:
         st.warning("Could not fetch price data.")
 
@@ -642,7 +689,7 @@ with t4:
     layout_bt["yaxis"]["zeroline"] = True
     layout_bt["yaxis"]["zerolinecolor"] = "#333"
     fig_bt.update_layout(**layout_bt)
-    st.plotly_chart(fig_bt, width='stretch')
+    st.plotly_chart(fig_bt, use_container_width=True)
 
     # Table
     bt_df = pd.DataFrame([{
@@ -863,6 +910,35 @@ with t6:
 
         trades = api_trades(limit=20)
 
+        # ── PnL Summary Stats ─────────────────────────────────────────────────
+        if trades:
+            _closed = [t for t in trades if t.get("pnl") is not None]
+            _total_trades = len(trades)
+            _total_pnl = sum(float(t["pnl"]) for t in _closed) if _closed else 0.0
+            _wins = sum(1 for t in _closed if float(t["pnl"]) > 0)
+            _win_rate = (_wins / len(_closed) * 100) if _closed else 0.0
+            _pnl_color = "g" if _total_pnl >= 0 else "r"
+            _pnl_sign  = "+" if _total_pnl >= 0 else ""
+
+            ps1, ps2, ps3 = st.columns(3)
+            with ps1:
+                st.markdown(f"""
+                <div class="mc" style="padding:0.5rem 0.8rem">
+                    <div class="mc-label">TOTAL TRADES</div>
+                    <div class="mc-value" style="font-size:1.1rem">{_total_trades}</div>
+                </div>""", unsafe_allow_html=True)
+            with ps2:
+                st.markdown(f"""
+                <div class="mc" style="padding:0.5rem 0.8rem">
+                    <div class="mc-label">TOTAL PnL</div>
+                    <div class="mc-value {_pnl_color}" style="font-size:1.1rem">{_pnl_sign}${_total_pnl:.2f}</div>
+                </div>""", unsafe_allow_html=True)
+            with ps3:
+                st.markdown(f"""
+                <div class="mc" style="padding:0.5rem 0.8rem">
+                    <div class="mc-label">WIN RATE</div>
+                    <div class="mc-value {'g' if _win_rate>=50 else 'r'}" style="font-size:1.1rem">{_win_rate:.1f}%</div>
+                </div>""", unsafe_allow_html=True)
         if trades:
             for tr in reversed(trades[-10:]):
                 action = tr.get("action","?")
@@ -917,3 +993,9 @@ with t6:
   "take_profit": 660.55,
   "pnl":       null
 }""", language="json")
+
+# ── Auto-refresh trigger ──────────────────────────────────────────────────────
+if auto_refresh:
+    _time.sleep(60)
+    st.cache_data.clear()
+    st.rerun()
